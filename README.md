@@ -2,6 +2,8 @@
 
 ## Hardware BOARD V0.1
 
+All file include and source in this: https://github.com/nguyentrungthao/STM32/tree/dev
+
 ### Module 7 segment with two ic 74595
 1. Pin configuration.
 
