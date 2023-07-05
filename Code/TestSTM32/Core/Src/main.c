@@ -21,8 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "Buzzer.h"
-#include "a.h"
+#include "7seg.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -87,14 +86,14 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+  SegLed_TestAllOutput();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  BuzzerOnOff(200, 2000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
