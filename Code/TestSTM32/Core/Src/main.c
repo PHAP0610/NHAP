@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "Buzzer.h"
+#include "a.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,6 +94,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  BuzzerOnOff(200, 2000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -217,6 +219,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+
   }
   /* USER CODE END Error_Handler_Debug */
 }
