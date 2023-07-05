@@ -87,13 +87,14 @@ int main(void)
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
-  SegLed_TestAllOutput();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  SegLed_OutputDigit();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
