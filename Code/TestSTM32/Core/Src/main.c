@@ -22,7 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Buzzer.h"
-#include "a.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,7 +94,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  BuzzerOnOff(200, 2000);
+	  //BuzzerOnOff(200, 2000);
+	  HAL_GPIO_WritePin(LE4_GPIO_Port, LE4_Pin, 1);
+	  HAL_Delay(200);
+	  HAL_GPIO_WritePin(LE4_GPIO_Port, LE4_Pin, 0);
+	  HAL_Delay(200);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
