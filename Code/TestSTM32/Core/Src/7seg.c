@@ -34,30 +34,10 @@ void SegLed_OutputDigit(uint16_t testDigit)
 	HAL_GPIO_WritePin(HC595_LATCH_GPIO_Port, HC595_LATCH_Pin, 0);
 }
 
-void SegLed_0_9(uint16_t x, uint8_t delay)
+void SegLed_Count0_9(uint16_t digit, uint8_t number, uint8_t delay)
 {
-	// const uint16_t code7seg[] = {0x01F7, 0x0134, 0x01ED, 0x017D, 0x013E, 0x017B, 0x01FB, 0x0135, 0x01FF, 0x017F};
-	SegLed_OutputDigit(0x00F7|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x0034|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x00ED|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x007D|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x003E|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x007B|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x00FB|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x0035|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x00FF|x);
-	HAL_Delay(delay*1000);
-	SegLed_OutputDigit(0x007F|x);
-	HAL_Delay(delay*1000);
-
+	const uint16_t code7seg[] = {0x00F7, 0x0034, 0x00ED, 0x007D, 0x003E, 0x007B, 0x00FB, 0x0035, 0x00FF, 0x007F};
+	SegLed_OutputDigit(code7seg[number]|digit);
 }
 
 

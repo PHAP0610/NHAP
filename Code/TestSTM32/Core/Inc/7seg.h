@@ -10,11 +10,11 @@
 
 #include "main.h"
 
-#define LE3_BIT 8
-#define LE2_BIT 9
-#define LE1_BIT 10
+#define LE3_BIT (1<<10)
+#define LE2_BIT (1<<9)
+#define LE1_BIT (1<<8)
 
 void SegLed_TestAllOutput();
 void SegLed_OutputDigit(uint16_t testDigit);
-void SegLed_0_9(uint16_t x, uint8_t delay);
+void SegLed_Count0_9(uint16_t digit, uint8_t number, uint8_t delay);
 #endif /* INC_7SEG_H_ */

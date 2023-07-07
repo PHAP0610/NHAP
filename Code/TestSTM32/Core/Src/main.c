@@ -45,21 +45,45 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
-
+uint8_t ledSegCount[3]={0};
+uint8_t digitNumber[3]={0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if(htim->Instance == TIM2){
+		ledSegCount[0]++;
+		if(ledSegCount[0] >= 1){
+			ledSegCount[0] = 0;
+			digitNumber[0]++;
+		}
+		if(digitNumber[0] == 10){
+			digitNumber[0] = 0;
+			digitNumber[1]++;
+		}
+		if(digitNumber[1] == 10){
+			digitNumber[1] = 0;
+			digitNumber[2]++;
+		}
+		if(digitNumber[2] == 10){
+			digitNumber[2] = 0 ;
+			digitNumber[1] = 0 ;
+			digitNumber[0] = 0 ;
+		}
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -90,28 +114,19 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  //HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
-
+  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+  HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  for(uint8_t i = 0 ; i < 9 ; i++){
-		  SegLed_0_9(0x0400, 1);
-		  for(uint8_t j = 0 ; j < 9 ; j++){
-			  SegLed_0_9(0x0200, 10);
-			  for(uint8_t i = 0 ; i < 9 ; i++){
-				  SegLed_0_9(0x0100, 100);
-			  }
-		  }
-	  }
-	  //BuzzerOnOff(200, 2000);
-
-//	  SegLed_OutputDigit(0x01f7);
-//	  SegLed_OutputDigit(0x0234);
+	  SegLed_Count0_9(LE3_BIT,digitNumber[0],1);
+	  SegLed_Count0_9(LE2_BIT,digitNumber[1],1);
+	  SegLed_Count0_9(LE1_BIT,digitNumber[2],1);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -153,6 +168,51 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 8000-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 100;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
 }
 
 /**
