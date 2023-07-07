@@ -21,7 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 #include "Buzzer.h"
+
+
+#include "7seg.h"
 
 /* USER CODE END Includes */
 
@@ -87,6 +91,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
+  //HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
 
   /* USER CODE END 2 */
 
@@ -94,11 +99,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  for(uint8_t i = 0 ; i < 9 ; i++){
+		  SegLed_0_9(0x0400, 1);
+		  for(uint8_t j = 0 ; j < 9 ; j++){
+			  SegLed_0_9(0x0200, 10);
+			  for(uint8_t i = 0 ; i < 9 ; i++){
+				  SegLed_0_9(0x0100, 100);
+			  }
+		  }
+	  }
 	  //BuzzerOnOff(200, 2000);
-	  HAL_GPIO_WritePin(LE4_GPIO_Port, LE4_Pin, 1);
-	  HAL_Delay(200);
-	  HAL_GPIO_WritePin(LE4_GPIO_Port, LE4_Pin, 0);
-	  HAL_Delay(200);
+
+//	  SegLed_OutputDigit(0x01f7);
+//	  SegLed_OutputDigit(0x0234);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
