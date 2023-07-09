@@ -49,7 +49,9 @@ TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 uint8_t ledSegCount[3]={0};
-uint8_t digitNumber[3]={0};
+int8_t digitNumber[3]={0};
+uint16_t start;
+int8_t dem=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,24 +66,24 @@ static void MX_TIM2_Init(void);
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM2){
-		ledSegCount[0]++;
-		if(ledSegCount[0] >= 1){
-			ledSegCount[0] = 0;
-			digitNumber[0]++;
-		}
-		if(digitNumber[0] == 10){
-			digitNumber[0] = 0;
-			digitNumber[1]++;
-		}
-		if(digitNumber[1] == 10){
-			digitNumber[1] = 0;
-			digitNumber[2]++;
-		}
-		if(digitNumber[2] == 10){
-			digitNumber[2] = 0 ;
-			digitNumber[1] = 0 ;
-			digitNumber[0] = 0 ;
-		}
+//		ledSegCount[0]++;
+//		if(dem > 0){
+//			ledSegCount[0] = 0;
+//			digitNumber[0]++;
+//		}
+//		if(digitNumber[0] == 10){
+//			digitNumber[0] = 0;
+//			digitNumber[1]++;
+//		}
+//		if(digitNumber[1] == 10){
+//			digitNumber[1] = 0;
+//			digitNumber[2]++;
+//		}
+//		if(digitNumber[2] == 10){
+//			digitNumber[2] = 0 ;
+//			digitNumber[1] = 0 ;
+//			digitNumber[0] = 0 ;
+//		}
 	}
 }
 /* USER CODE END 0 */
@@ -118,17 +120,58 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
   HAL_TIM_Base_Start_IT(&htim2);
+  start = HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+    /* USER CODE END WHILE */
+	  uint16_t present = HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin);
+	  if(start != present){
+		  if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin) != present){
+			  dem++;
+			  digitNumber[0]=dem/2;
+			  if(digitNumber[0] == 10){
+				  digitNumber[0] = 0;
+				  dem = 0;
+				  digitNumber[1]++;
+			  }
+			  if(digitNumber[1] == 10){
+				  digitNumber[1] = 0;
+				  digitNumber[2]++;
+			  }
+			  if(digitNumber[2] == 10){
+				  digitNumber[2] = 0 ;
+				  digitNumber[1] = 0 ;
+				  digitNumber[0] = 0 ;
+			  }
+		  }
+		  else {
+			  dem--;
+			  digitNumber[0]=dem/2;
+			  if(digitNumber[0] == -1){
+				  digitNumber[0] = 9;
+				  dem = 18;
+				  digitNumber[1]--;
+			  }
+			  if(digitNumber[1] == -1){
+				  digitNumber[1] = 9;
+				  digitNumber[2]--;
+			  }
+			  if(digitNumber[2] == -1){
+				  digitNumber[2] = 9 ;
+				  digitNumber[1] = 9 ;
+				  digitNumber[0] = 9 ;
+			  }
+		  }
+		  start = present;
+	  }
 	  SegLed_Count0_9(LE3_BIT,digitNumber[0],1);
 	  SegLed_Count0_9(LE2_BIT,digitNumber[1],1);
 	  SegLed_Count0_9(LE1_BIT,digitNumber[2],1);
-    /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -236,7 +279,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, BUZZER_Pin|HC595_DS_Pin|HC595_OE_Pin|HC595_LATCH_Pin
-                          |HC595_SCLK_Pin|EnA_Pin|EnB_Pin|EnBtn_Pin, GPIO_PIN_RESET);
+                          |HC595_SCLK_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(TRIAC_GPIO_Port, TRIAC_Pin, GPIO_PIN_RESET);
@@ -272,9 +315,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : EnA_Pin EnB_Pin EnBtn_Pin */
   GPIO_InitStruct.Pin = EnA_Pin|EnB_Pin|EnBtn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
