@@ -1391,7 +1391,7 @@
     (property "Value" " " (at 186.69 57.785 90)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical" (at 187.96 60.325 0)
+    (property "Footprint" "IVS_FOOTPRINTS:PinHeader_1x06_P2.54mm_Vertical" (at 187.96 60.325 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at 187.96 60.325 0)
