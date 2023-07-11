@@ -77,10 +77,6 @@ void Error_Handler(void);
 #define ACDET_GPIO_Port GPIOB
 #define TRIAC_Pin GPIO_PIN_1
 #define TRIAC_GPIO_Port GPIOB
-#define EnA_Pin GPIO_PIN_8
-#define EnA_GPIO_Port GPIOA
-#define EnB_Pin GPIO_PIN_9
-#define EnB_GPIO_Port GPIOA
 #define EnBtn_Pin GPIO_PIN_10
 #define EnBtn_GPIO_Port GPIOA
 

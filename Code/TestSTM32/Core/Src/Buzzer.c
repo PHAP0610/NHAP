@@ -17,11 +17,13 @@ void BuzzerToggle()
 void BuzzerOn(int On){
 	HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
 	HAL_Delay(On);
+	HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
 }
 
 void BuzzerOff(int Off){
 	HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
 	HAL_Delay(Off);
+	HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
 }
 
 void BuzzerOnOff(int delayOn, int delayOff){

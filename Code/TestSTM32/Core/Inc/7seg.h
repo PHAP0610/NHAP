@@ -16,5 +16,5 @@
 
 void SegLed_TestAllOutput();
 void SegLed_OutputDigit(uint16_t testDigit);
-void SegLed_Count0_9(uint16_t digit, uint8_t number, uint8_t delay);
+void SegLed_Count0_9(uint16_t digit, uint8_t number);
 #endif /* INC_7SEG_H_ */

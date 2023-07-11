@@ -34,7 +34,7 @@ void SegLed_OutputDigit(uint16_t testDigit)
 	HAL_GPIO_WritePin(HC595_LATCH_GPIO_Port, HC595_LATCH_Pin, 0);
 }
 
-void SegLed_Count0_9(uint16_t digit, uint8_t number, uint8_t delay)
+void SegLed_Count0_9(uint16_t digit, uint8_t number)
 {
 	const uint16_t code7seg[] = {0x00D7, 0x0014, 0x00CD, 0x005D, 0x001E, 0x005B, 0x00DB, 0x0015, 0x00DF, 0x005F};
 	SegLed_OutputDigit(code7seg[number]|digit);
