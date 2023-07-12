@@ -69,6 +69,7 @@ static void MX_TIM1_Init(void);
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM2){
+		}
 //		ledSegCount[0]++;
 //		if(dem > 0){
 //			ledSegCount[0] = 0;

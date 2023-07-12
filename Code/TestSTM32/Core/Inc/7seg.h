@@ -10,6 +10,10 @@
 
 #include "main.h"
 
+#define LE7_BIT (1<<14)
+#define LE6_BIT (1<<13)
+#define LE5_BIT (1<<12)
+#define LE4_BIT (1<<11)
 #define LE3_BIT (1<<10)
 #define LE2_BIT (1<<9)
 #define LE1_BIT (1<<8)
