@@ -23,19 +23,23 @@
 /* USER CODE BEGIN Includes */
 
 #include "Buzzer.h"
-
-
+#include <stdio.h>
 #include "7seg.h"
-
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef enum Flag{
+	UART3_INT,
+}Flag;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define CHECKFLAG(FlagGroup,FlagBit) ((((FlagGroup) & (1<<FlagBit)) == (1<<FlagBit)) ? 1 : 0)
+#define SETFLAG(FlagGroup,FlagBit) ((FlagGroup) |= (1<<FlagBit))
+#define CLEARFLAG(FlagGroup,FlagBit) (FlagGroup &= ~(1<<FlagBit))
 
 /* USER CODE END PD */
 
@@ -47,16 +51,20 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart3;
+
 /* USER CODE BEGIN PV */
 uint8_t ledSegCount[3]={0};
 int8_t digitNumber[3]={0};
-uint16_t dem=0;
+int dem=0;
+uint32_t flag=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -65,62 +73,19 @@ static void MX_TIM2_Init(void);
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM2){
-//		ledSegCount[0]++;
-//		if(dem > 0){
-//			ledSegCount[0] = 0;
-//			digitNumber[0]++;
-//		}
-//		if(digitNumber[0] == 10){
-//			digitNumber[0] = 0;
-//			digitNumber[1]++;
-//		}
-//		if(digitNumber[1] == 10){
-//			digitNumber[1] = 0;
-//			digitNumber[2]++;
-//		}
-//		if(digitNumber[2] == 10){
-//			digitNumber[2] = 0 ;
-//			digitNumber[1] = 0 ;
-//			digitNumber[0] = 0 ;
-//		}
-	}
 
+	}
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == EnA_Pin){
 		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin) == HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){
-			digitNumber[0]++;
-			if(digitNumber[0] == 10){
-				digitNumber[0] = 0;
-				digitNumber[1]++;
-			}
-			if(digitNumber[1] == 10){
-				digitNumber[1] = 0;
-				digitNumber[2]++;
-			}
-			if(digitNumber[2] == 10){
-				digitNumber[2] = 0 ;
-				digitNumber[1] = 0 ;
-				digitNumber[0] = 0 ;
-			}
+			dem++;
 		}
 		else {
-			digitNumber[0]--;
-			if(digitNumber[0] == -1){
-				digitNumber[0] = 9;
-				digitNumber[1]--;
-			}
-			if(digitNumber[1] == -1){
-				digitNumber[1] = 9;
-				digitNumber[2]--;
-			}
-			if(digitNumber[2] == -1){
-				digitNumber[2] = 9 ;
-				digitNumber[1] = 9 ;
-				digitNumber[0] = 9 ;
-			}
+			dem--;
 		}
+		SETFLAG(flag,UART3_INT);
 	}
 }
 /* USER CODE END 0 */
@@ -154,6 +119,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM2_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
   /* USER CODE END 2 */
 
@@ -161,6 +127,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(CHECKFLAG(flag,UART3_INT)){
+		char s[5];
+		sprintf(s,"%d\n",dem);
+		HAL_UART_Transmit(&huart3, (uint8_t*)s, strlen(s), HAL_MAX_DELAY);
+		CLEARFLAG(flag,UART3_INT);
+	  }
 	  SegLed_Count0_9(LE3_BIT, digitNumber[0]);
 	  SegLed_Count0_9(LE2_BIT, digitNumber[1]);
 	  SegLed_Count0_9(LE1_BIT, digitNumber[2]);
@@ -249,6 +221,39 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
 
 }
 
