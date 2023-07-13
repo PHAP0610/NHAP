@@ -45,22 +45,18 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 uint8_t ledSegCount[3]={0};
 int8_t digitNumber[3]={0};
-uint16_t start;
-uint16_t dem[3]={0};
-uint16_t encoderValue;
+uint16_t dem=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -69,7 +65,6 @@ static void MX_TIM1_Init(void);
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM2){
-		}
 //		ledSegCount[0]++;
 //		if(dem > 0){
 //			ledSegCount[0] = 0;
@@ -88,6 +83,44 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 //			digitNumber[1] = 0 ;
 //			digitNumber[0] = 0 ;
 //		}
+	}
+
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == EnA_Pin){
+		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin) == HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){
+			digitNumber[0]++;
+			if(digitNumber[0] == 10){
+				digitNumber[0] = 0;
+				digitNumber[1]++;
+			}
+			if(digitNumber[1] == 10){
+				digitNumber[1] = 0;
+				digitNumber[2]++;
+			}
+			if(digitNumber[2] == 10){
+				digitNumber[2] = 0 ;
+				digitNumber[1] = 0 ;
+				digitNumber[0] = 0 ;
+			}
+		}
+		else {
+			digitNumber[0]--;
+			if(digitNumber[0] == -1){
+				digitNumber[0] = 9;
+				digitNumber[1]--;
+			}
+			if(digitNumber[1] == -1){
+				digitNumber[1] = 9;
+				digitNumber[2]--;
+			}
+			if(digitNumber[2] == -1){
+				digitNumber[2] = 9 ;
+				digitNumber[1] = 9 ;
+				digitNumber[0] = 9 ;
+			}
+		}
 	}
 }
 /* USER CODE END 0 */
@@ -121,23 +154,13 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM2_Init();
-  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
-  HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
-  HAL_TIM_Encoder_Start_IT(&htim1, TIM_CHANNEL_1);
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  encoderValue = __HAL_TIM_GetCounter(&htim1);
-	  dem[0] = encoderValue/2;
-	  digitNumber[2] = dem[0]/100;
-	  dem[1] = dem[0]%100;
-	  digitNumber[0] = dem[1]%10;
-	  digitNumber[1] = dem[1]/10;
-
 	  SegLed_Count0_9(LE3_BIT, digitNumber[0]);
 	  SegLed_Count0_9(LE2_BIT, digitNumber[1]);
 	  SegLed_Count0_9(LE1_BIT, digitNumber[2]);
@@ -182,56 +205,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_Encoder_InitTypeDef sConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 1999;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
-  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
-  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
-  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
-  sConfig.IC1Filter = 0;
-  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
-  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
-  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
-  sConfig.IC2Filter = 0;
-  if (HAL_TIM_Encoder_Init(&htim1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
 }
 
 /**
@@ -334,11 +307,30 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(TRIAC_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : EnB_Pin */
+  GPIO_InitStruct.Pin = EnB_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(EnB_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : EnA_Pin */
+  GPIO_InitStruct.Pin = EnA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(EnA_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : EnBtn_Pin */
   GPIO_InitStruct.Pin = EnBtn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(EnBtn_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
