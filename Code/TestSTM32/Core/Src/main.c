@@ -60,6 +60,11 @@ int8_t digitNumber[4]={0};
 uint16_t start;
 int8_t dem=0;
 uint32_t flag=0;
+uint8_t Push = 0;
+uint8_t EnAState = 0;
+uint8_t preEnAState = 0;
+uint8_t EnBState = 0;
+uint8_t preEnBState = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,6 +78,28 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == EnA_Pin){
+		if(HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
+			EnAState = 1;
+		else
+			EnAState = 0;
+		if(!HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
+			EnBState = 0;
+		else
+			EnBState = 1;
+		if((preEnAState == 1 && preEnBState == 0)|(EnAState == 0 && EnBState == 1))
+			dem++;
+		if((preEnAState == 1 && preEnBState == 1)|(EnAState == 0 && EnBState == 0))
+			dem--;
+		preEnAState = EnAState;
+		preEnBState = EnBState;
+	}
+	if(GPIO_Pin == EnBtn_Pin){
+		Push++;
+	}
+}
 
 void FlagSet(uint32_t *f, uint32_t bitToSet){
 	*f |= (1<<bitToSet);
@@ -97,6 +124,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM3){
 		FlagSet(&flag, FLAG_TIMER3_INT);
 		digitCount++;
+		if(digitCount == 4) digitCount = 0;
 	}
 }
 /* USER CODE END 0 */
@@ -158,9 +186,6 @@ int main(void)
 			break;
 			case 3:
 				SegLed_Show(LE4_BIT,digitNumber[3]);
-			break;
-			default:
-				digitCount = 0;
 			break;
 		}
 		  digitNumber[0]++;
@@ -285,7 +310,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 8000-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1;
+  htim3.Init.Period = 10;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -364,11 +389,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(TRIAC_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : EnA_Pin EnBtn_Pin */
-  GPIO_InitStruct.Pin = EnA_Pin|EnBtn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pin : EnA_Pin */
+  GPIO_InitStruct.Pin = EnA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(EnA_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : EnB_Pin */
   GPIO_InitStruct.Pin = EnB_Pin;
@@ -376,11 +401,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(EnB_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : EnBtn_Pin */
+  GPIO_InitStruct.Pin = EnBtn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(EnBtn_GPIO_Port, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 3, 0);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
