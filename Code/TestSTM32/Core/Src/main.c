@@ -23,7 +23,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "Buzzer.h"
-
+#include <string.h>
 
 #include "7seg.h"
 
@@ -31,6 +31,12 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef enum Flag{
+	FLAG_TIMER2_INT,
+	FLAG_TIMER3_INT,
+	FLAG_UART2_INT,
+}Flag;
+
 
 /* USER CODE END PTD */
 
@@ -46,44 +52,51 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-uint8_t ledSegCount[3]={0};
-int8_t digitNumber[3]={0};
+uint8_t digitCount=0;
+int8_t digitNumber[4]={0};
 uint16_t start;
 int8_t dem=0;
+uint32_t flag=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void FlagSet(uint32_t *f, uint32_t bitToSet){
+	*f |= (1<<bitToSet);
+}
+
+
+void FlagClear(uint32_t *f, uint32_t bitToClear){
+	*f &= ~(1<<bitToClear);
+}
+
+uint8_t FlagCheck(uint32_t f, uint32_t bitToCheck){
+	if(f&(1<<bitToCheck))
+		return 1;
+	else
+		return 0;
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM2){
-//		ledSegCount[0]++;
-//		if(dem > 0){
-//			ledSegCount[0] = 0;
-//			digitNumber[0]++;
-//		}
-//		if(digitNumber[0] == 10){
-//			digitNumber[0] = 0;
-//			digitNumber[1]++;
-//		}
-//		if(digitNumber[1] == 10){
-//			digitNumber[1] = 0;
-//			digitNumber[2]++;
-//		}
-//		if(digitNumber[2] == 10){
-//			digitNumber[2] = 0 ;
-//			digitNumber[1] = 0 ;
-//			digitNumber[0] = 0 ;
-//		}
+		FlagSet(&flag, FLAG_TIMER2_INT);
+	}
+	if(htim->Instance == TIM3){
+		FlagSet(&flag, FLAG_TIMER3_INT);
+		digitCount++;
 	}
 }
 /* USER CODE END 0 */
@@ -117,61 +130,54 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim3);
   HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
-  HAL_TIM_Base_Start_IT(&htim2);
-  start = HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin);
+//  HAL_TIM_Base_Start_IT(&htim2);
+//  start = HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(FlagCheck(flag, FLAG_TIMER3_INT)){
+		  switch (digitCount) {
+			case 0:
+				SegLed_Show(LE7_BIT,digitNumber[0]);
+			break;
+			case 1:
+				SegLed_Show(LE6_BIT,digitNumber[1]);
+
+			break;
+			case 2:
+				SegLed_Show(LE5_BIT,digitNumber[2]);
+
+			break;
+			case 3:
+				SegLed_Show(LE4_BIT,digitNumber[3]);
+			break;
+			default:
+				digitCount = 0;
+			break;
+		}
+		  digitNumber[0]++;
+		  for(uint8_t i=0;i<sizeof(digitNumber)-1;i++){
+			  if(digitNumber[i]==10){
+				  digitNumber[i]=0;
+				  digitNumber[i+1]++;
+			  }
+		  }
+		  if(digitNumber[3]==10){
+			  memset(digitNumber,0,sizeof(digitNumber));
+		  }
+		  FlagClear(&flag, FLAG_TIMER3_INT);
+	  }
 
     /* USER CODE END WHILE */
-	  uint16_t present = HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin);
-	  if(start != present){
-		  if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin) != present){
-			  dem++;
-			  digitNumber[0]=dem/2;
-			  if(digitNumber[0] == 10){
-				  digitNumber[0] = 0;
-				  dem = 0;
-				  digitNumber[1]++;
-			  }
-			  if(digitNumber[1] == 10){
-				  digitNumber[1] = 0;
-				  digitNumber[2]++;
-			  }
-			  if(digitNumber[2] == 10){
-				  digitNumber[2] = 0 ;
-				  digitNumber[1] = 0 ;
-				  digitNumber[0] = 0 ;
-			  }
-		  }
-		  else {
-			  dem--;
-			  digitNumber[0]=dem/2;
-			  if(digitNumber[0] == -1){
-				  digitNumber[0] = 9;
-				  dem = 18;
-				  digitNumber[1]--;
-			  }
-			  if(digitNumber[1] == -1){
-				  digitNumber[1] = 9;
-				  digitNumber[2]--;
-			  }
-			  if(digitNumber[2] == -1){
-				  digitNumber[2] = 9 ;
-				  digitNumber[1] = 9 ;
-				  digitNumber[0] = 9 ;
-			  }
-		  }
-		  start = present;
-	  }
-	  SegLed_Count0_9(LE3_BIT,digitNumber[0],1);
-	  SegLed_Count0_9(LE2_BIT,digitNumber[1],1);
-	  SegLed_Count0_9(LE1_BIT,digitNumber[2],1);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -259,6 +265,51 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 8000-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 1;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -313,11 +364,24 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(TRIAC_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : EnA_Pin EnB_Pin EnBtn_Pin */
-  GPIO_InitStruct.Pin = EnA_Pin|EnB_Pin|EnBtn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  /*Configure GPIO pins : EnA_Pin EnBtn_Pin */
+  GPIO_InitStruct.Pin = EnA_Pin|EnBtn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : EnB_Pin */
+  GPIO_InitStruct.Pin = EnB_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(EnB_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 3, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

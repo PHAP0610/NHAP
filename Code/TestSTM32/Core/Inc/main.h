@@ -79,10 +79,12 @@ void Error_Handler(void);
 #define TRIAC_GPIO_Port GPIOB
 #define EnA_Pin GPIO_PIN_8
 #define EnA_GPIO_Port GPIOA
+#define EnA_EXTI_IRQn EXTI9_5_IRQn
 #define EnB_Pin GPIO_PIN_9
 #define EnB_GPIO_Port GPIOA
 #define EnBtn_Pin GPIO_PIN_10
 #define EnBtn_GPIO_Port GPIOA
+#define EnBtn_EXTI_IRQn EXTI15_10_IRQn
 
 /* USER CODE BEGIN Private defines */
 
