@@ -35,6 +35,7 @@ typedef enum Flag{
 	FLAG_TIMER2_INT,
 	FLAG_TIMER3_INT,
 	FLAG_UART2_INT,
+	FLAG_ENC_INT,
 }Flag;
 
 
@@ -82,34 +83,7 @@ static void MX_USART3_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if(GPIO_Pin == EnA_Pin){
-//		if(HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
-//			EnAState = 1;
-//		else
-//			EnAState = 0;
-//		if(!HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
-//			EnBState = 0;
-//		else
-//			EnBState = 1;
-//		if((preEnAState == 1 && preEnBState == 0)|(EnAState == 0 && EnBState == 1))
-//			dem++;
-//		if((preEnAState == 1 && preEnBState == 1)|(EnAState == 0 && EnBState == 0))
-//			dem--;
-//		preEnAState = EnAState;
-//		preEnBState = EnBState;
-		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin)!=HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){
-			dem++;
-		}else
-			dem--;
-	}
-	if(GPIO_Pin == EnBtn_Pin){
-		Push++;
-	}
-	char s[5]={0};
-	sprintf(s,"%d\n",dem);
-	HAL_UART_Transmit(&huart3, (uint8_t*)s, strlen(s), HAL_MAX_DELAY);
-}
+
 
 void FlagSet(uint32_t *f, uint32_t bitToSet){
 	*f |= (1<<bitToSet);
@@ -127,6 +101,13 @@ uint8_t FlagCheck(uint32_t f, uint32_t bitToCheck){
 		return 0;
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == EnA_Pin){
+		FlagSet(&flag, FLAG_ENC_INT);
+		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+	}
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM2){
 		FlagSet(&flag, FLAG_TIMER2_INT);
@@ -137,6 +118,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		if(digitCount == 4) digitCount = 0;
 	}
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -182,6 +164,17 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if (FlagCheck(flag, FLAG_ENC_INT)){
+
+			  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) == HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)){
+				  dem++;
+			  } else {
+				  dem--;
+			  }
+		  FlagClear(&flag, FLAG_ENC_INT);
+		  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+	  }
+
 	  if(FlagCheck(flag, FLAG_TIMER3_INT)){
 		  switch (digitCount) {
 			case 0:
