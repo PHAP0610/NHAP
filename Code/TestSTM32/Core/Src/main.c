@@ -84,20 +84,24 @@ static void MX_USART3_UART_Init(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == EnA_Pin){
-		if(HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
-			EnAState = 1;
-		else
-			EnAState = 0;
-		if(!HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
-			EnBState = 0;
-		else
-			EnBState = 1;
-		if((preEnAState == 1 && preEnBState == 0)|(EnAState == 0 && EnBState == 1))
+//		if(HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
+//			EnAState = 1;
+//		else
+//			EnAState = 0;
+//		if(!HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
+//			EnBState = 0;
+//		else
+//			EnBState = 1;
+//		if((preEnAState == 1 && preEnBState == 0)|(EnAState == 0 && EnBState == 1))
+//			dem++;
+//		if((preEnAState == 1 && preEnBState == 1)|(EnAState == 0 && EnBState == 0))
+//			dem--;
+//		preEnAState = EnAState;
+//		preEnBState = EnBState;
+		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin)!=HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){
 			dem++;
-		if((preEnAState == 1 && preEnBState == 1)|(EnAState == 0 && EnBState == 0))
+		}else
 			dem--;
-		preEnAState = EnAState;
-		preEnBState = EnBState;
 	}
 	if(GPIO_Pin == EnBtn_Pin){
 		Push++;
@@ -429,23 +433,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(TRIAC_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : EnA_Pin */
-  GPIO_InitStruct.Pin = EnA_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(EnA_GPIO_Port, &GPIO_InitStruct);
+  /*Configure GPIO pins : EnA_Pin EnBtn_Pin */
+  GPIO_InitStruct.Pin = EnA_Pin|EnBtn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : EnB_Pin */
   GPIO_InitStruct.Pin = EnB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(EnB_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : EnBtn_Pin */
-  GPIO_InitStruct.Pin = EnBtn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(EnBtn_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
