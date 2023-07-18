@@ -37,6 +37,13 @@ typedef enum Flag{
 	FLAG_UART2_INT,
 }Flag;
 
+typedef enum ECDFlag{
+	Flag_Phase1,
+	Flag_Phase2,
+	Flag_Phase3,
+}ECDFlag;
+
+enum ECDFlag ECDphase;
 
 /* USER CODE END PTD */
 
@@ -57,16 +64,16 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-uint8_t digitCount=0;
-int8_t digitNumber[4]={0};
-uint16_t start;
-int8_t dem=0;
-uint32_t flag=0;
+uint8_t digitCount = 0;
+int8_t digitNumber[4] = {0};
+uint32_t flag = 0;
+
+int8_t count = 0;
+uint32_t EnFlag = 0;
+
 uint8_t Push = 0;
-uint8_t EnAState = 0;
-uint8_t preEnAState = 0;
-uint8_t EnBState = 0;
-uint8_t preEnBState = 0;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,39 +89,14 @@ static void MX_USART3_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if(GPIO_Pin == EnA_Pin){
-//		if(HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
-//			EnAState = 1;
-//		else
-//			EnAState = 0;
-//		if(!HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
-//			EnBState = 0;
-//		else
-//			EnBState = 1;
-//		if((preEnAState == 1 && preEnBState == 0)|(EnAState == 0 && EnBState == 1))
-//			dem++;
-//		if((preEnAState == 1 && preEnBState == 1)|(EnAState == 0 && EnBState == 0))
-//			dem--;
-//		preEnAState = EnAState;
-//		preEnBState = EnBState;
-		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin)!=HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){
-			dem++;
-		}else
-			dem--;
-	}
-	if(GPIO_Pin == EnBtn_Pin){
-		Push++;
-	}
-	char s[5]={0};
-	sprintf(s,"%d\n",dem);
-	HAL_UART_Transmit(&huart3, (uint8_t*)s, strlen(s), HAL_MAX_DELAY);
+void delay_us(uint32_t time){
+	__HAL_TIM_SET_COUNTER(&htim2,0);
+	while(__HAL_TIM_GET_COUNTER(&htim2)<time){};
 }
 
 void FlagSet(uint32_t *f, uint32_t bitToSet){
 	*f |= (1<<bitToSet);
 }
-
 
 void FlagClear(uint32_t *f, uint32_t bitToClear){
 	*f &= ~(1<<bitToClear);
@@ -125,6 +107,64 @@ uint8_t FlagCheck(uint32_t f, uint32_t bitToCheck){
 		return 1;
 	else
 		return 0;
+}
+
+void Phase1(){
+	if(FlagCheck(EnFlag, Flag_Phase1)){
+		delay_us(1000);
+		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
+			count++;
+		else
+			count--;
+	}
+	FlagSet(&EnFlag, Flag_Phase2);
+}
+
+void Phase2(){
+	if(FlagCheck(EnFlag, Flag_Phase2)){
+		delay_us(10000);
+		while(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){};
+	}
+	FlagSet(&EnFlag, Flag_Phase3);
+}
+
+void Phase3(){
+	if(FlagCheck(EnFlag, Flag_Phase3)){
+		for(int i = 0; i<4; i++){
+			if(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
+				i = 0;
+			else i++;
+			delay_us(1000);
+		}
+	}
+	FlagClear(&EnFlag, Flag_Phase1);
+	FlagClear(&EnFlag, Flag_Phase2);
+	FlagClear(&EnFlag, Flag_Phase3);
+	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == EnA_Pin){
+		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+		FlagSet(&EnFlag, Flag_Phase1);
+		switch(ECDphase){
+		  case Flag_Phase1:
+			  Phase1();
+			  break;
+		  case Flag_Phase2:
+			  Phase2();
+			  break;
+		  case Flag_Phase3:
+			  Phase3();
+			  break;
+		}
+	}
+	if(GPIO_Pin == EnBtn_Pin){
+		Push++;
+	}
+	char s[5]={0};
+	sprintf(s,"%d\n",count);
+	HAL_UART_Transmit(&huart3, (uint8_t*)s, strlen(s), HAL_MAX_DELAY);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
@@ -171,10 +211,11 @@ int main(void)
   MX_TIM3_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+  HAL_TIM_Base_Start(&htim2);
 //  HAL_TIM_Base_Start_IT(&htim2);
-//  start = HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin);
 
   /* USER CODE END 2 */
 
@@ -274,9 +315,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 8000-1;
+  htim2.Init.Prescaler = 8-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 100;
+  htim2.Init.Period = 1-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -435,14 +476,14 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : EnA_Pin EnBtn_Pin */
   GPIO_InitStruct.Pin = EnA_Pin|EnBtn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : EnB_Pin */
   GPIO_InitStruct.Pin = EnB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(EnB_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
