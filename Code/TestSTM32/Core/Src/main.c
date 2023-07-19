@@ -31,19 +31,18 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef enum Flag{
+
+typedef enum {
 	FLAG_TIMER2_INT,
 	FLAG_TIMER3_INT,
 	FLAG_UART2_INT,
 }Flag;
 
-typedef enum ECDFlag{
+typedef enum {
 	Flag_Phase1,
 	Flag_Phase2,
 	Flag_Phase3,
-}ECDFlag;
-
-enum ECDFlag ECDphase;
+}Phase;
 
 /* USER CODE END PTD */
 
@@ -89,20 +88,30 @@ static void MX_USART3_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void delay_us(uint32_t time){
-	__HAL_TIM_SET_COUNTER(&htim2,0);
-	while(__HAL_TIM_GET_COUNTER(&htim2)<time){};
-}
-
-void FlagSet(uint32_t *f, uint32_t bitToSet){
+void FlagSet(uint32_t *f, Flag bitToSet){
 	*f |= (1<<bitToSet);
 }
 
-void FlagClear(uint32_t *f, uint32_t bitToClear){
+void FlagClear(uint32_t *f, Flag bitToClear){
 	*f &= ~(1<<bitToClear);
 }
 
-uint8_t FlagCheck(uint32_t f, uint32_t bitToCheck){
+uint8_t FlagCheck(uint32_t f, Flag bitToCheck){
+	if(f&(1<<bitToCheck))
+		return 1;
+	else
+		return 0;
+}
+
+void ECDFlagSet(uint32_t *f, Phase bitToSet){
+	*f |= (1<<bitToSet);
+}
+
+void ECDFlagClear(uint32_t *f, Phase bitToClear){
+	*f &= ~(1<<bitToClear);
+}
+
+uint8_t ECDFlagCheck(uint32_t f, Phase bitToCheck){
 	if(f&(1<<bitToCheck))
 		return 1;
 	else
@@ -110,54 +119,42 @@ uint8_t FlagCheck(uint32_t f, uint32_t bitToCheck){
 }
 
 void Phase1(){
-	if(FlagCheck(EnFlag, Flag_Phase1)){
-		delay_us(1000);
+	if(ECDFlagCheck(EnFlag, Flag_Phase1)){
 		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
 			count++;
 		else
 			count--;
 	}
-	FlagSet(&EnFlag, Flag_Phase2);
+	ECDFlagClear(&EnFlag, Flag_Phase1);
+	ECDFlagSet(&EnFlag, Flag_Phase2);
 }
 
 void Phase2(){
-	if(FlagCheck(EnFlag, Flag_Phase2)){
-		delay_us(10000);
+	if(ECDFlagCheck(EnFlag, Flag_Phase2)){
 		while(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){};
 	}
-	FlagSet(&EnFlag, Flag_Phase3);
+	ECDFlagClear(&EnFlag, Flag_Phase2);
+	ECDFlagSet(&EnFlag, Flag_Phase3);
 }
 
 void Phase3(){
-	if(FlagCheck(EnFlag, Flag_Phase3)){
+	if(ECDFlagCheck(EnFlag, Flag_Phase3)){
 		for(int i = 0; i<4; i++){
 			if(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
 				i = 0;
-			else i++;
-			delay_us(1000);
+			__HAL_TIM_SET_COUNTER(&htim2,0);
+			while(__HAL_TIM_GET_COUNTER(&htim2)<500){};
 		}
 	}
-	FlagClear(&EnFlag, Flag_Phase1);
-	FlagClear(&EnFlag, Flag_Phase2);
-	FlagClear(&EnFlag, Flag_Phase3);
+	ECDFlagClear(&EnFlag, Flag_Phase3);
 	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == EnA_Pin){
+
+		ECDFlagSet(&EnFlag, Flag_Phase1);
 		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
-		FlagSet(&EnFlag, Flag_Phase1);
-		switch(ECDphase){
-		  case Flag_Phase1:
-			  Phase1();
-			  break;
-		  case Flag_Phase2:
-			  Phase2();
-			  break;
-		  case Flag_Phase3:
-			  Phase3();
-			  break;
-		}
 	}
 	if(GPIO_Pin == EnBtn_Pin){
 		Push++;
@@ -168,9 +165,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if(htim->Instance == TIM2){
-		FlagSet(&flag, FLAG_TIMER2_INT);
-	}
 	if(htim->Instance == TIM3){
 		FlagSet(&flag, FLAG_TIMER3_INT);
 		digitCount++;
@@ -253,6 +247,17 @@ int main(void)
 		  FlagClear(&flag, FLAG_TIMER3_INT);
 	  }
 
+	  switch(EnFlag){
+	  		  case 1:
+	  			  Phase1();
+	  			  break;
+	  		  case 2:
+	  			  Phase2();
+	  			  break;
+	  		  case 4:
+	  			  Phase3();
+	  			  break;
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
