@@ -40,14 +40,22 @@ typedef enum Flag{
 
 typedef enum ecdProcState{
 	ECD_WAIT1 = 1,
-	ECD_WAIT2,
 	ECD_WAIT3,
 	ECD_State1,
 	ECD_State2,
 	ECD_State3,
 }ecdProcState;
 
+typedef enum btnProcState{
+	BTN_WAIT1 = 1,
+	BTN_WAIT3,
+	BTN_State1,
+	BTN_State2,
+	BTN_State3,
+}btnProcState;
+
 ecdProcState ecdState;
+btnProcState btnState;
 
 /* USER CODE END PTD */
 
@@ -74,11 +82,11 @@ uint8_t digitCount = 0;
 int8_t digitNumber[4] = {0};
 uint32_t flag = 0;
 
-int8_t count = 0;
-uint8_t check = 0;
+int8_t ecdcount = 0;
+uint8_t ecdcheck = 0;
 
-uint8_t Push = 0;
-
+uint8_t push = 0;
+uint8_t btncheck = 0;
 
 /* USER CODE END PV */
 
@@ -94,48 +102,19 @@ static void MX_USART3_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-//void FlagSet(uint32_t *f, Flag bitToSet){
-//	*f |= (1<<bitToSet);
-//}
-//
-//void FlagClear(uint32_t *f, Flag bitToClear){
-//	*f &= ~(1<<bitToClear);
-//}
-//
-//uint8_t FlagCheck(uint32_t f, Flag bitToCheck){
-//	if(f&(1<<bitToCheck))
-//		return 1;
-//	else
-//		return 0;
-//}
-
-void State1(){
-	if(HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)&HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
-		ecdState = ECD_State3;
-	else{
-		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
-			count++;
-		else
-			count--;
-		ecdState = ECD_WAIT2;
-	}
+void FlagSet(uint32_t *f, Flag bitToSet){
+	*f |= (1<<bitToSet);
 }
 
-void State2(){
-	while(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){};
-	ecdState = ECD_State3;
+void FlagClear(uint32_t *f, Flag bitToClear){
+	*f &= ~(1<<bitToClear);
 }
 
-void State3(){
-	if(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
-		check = 0;
+uint8_t FlagCheck(uint32_t f, Flag bitToCheck){
+	if(f&(1<<bitToCheck))
+		return 1;
 	else
-		check++;
-	if(check == 3)
-		ecdState = 0;
-	else
-		ecdState = ECD_WAIT3;
-	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+		return 0;
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
@@ -144,8 +123,56 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 	}
 	if(GPIO_Pin == EnBtn_Pin){
-		Push++;
+		btnState = BTN_WAIT1;
+		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 	}
+}
+
+void EcdState1(){
+	if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
+		ecdcount++;
+	else
+		ecdcount--;
+	ecdState = ECD_State2;
+}
+
+void EcdState2(){
+	while(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){};
+	ecdState = ECD_State3;
+}
+
+void EcdState3(){
+	if(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
+		ecdcheck = 0;
+	else
+		ecdcheck++;
+	if(ecdcheck == 3)
+		ecdState = 0;
+	else
+		ecdState = ECD_WAIT3;
+	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+}
+
+void BtnState1(){
+	push = !push;
+	btnState = BTN_State2;
+}
+
+void BtnState2(){
+	while(!HAL_GPIO_ReadPin(EnBtn_GPIO_Port, EnBtn_Pin)){};
+	btnState = BTN_State3;
+}
+
+void BtnState3(){
+	if(!HAL_GPIO_ReadPin(EnBtn_GPIO_Port, EnBtn_Pin))
+		btncheck = 0;
+	else
+		btncheck++;
+	if(ecdcheck == 3)
+		btnState = 0;
+	else
+		btnState = BTN_WAIT3;
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
@@ -153,9 +180,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		delay_counter++;
 	}
 	if(htim->Instance == TIM3){
-//		FlagSet(&flag, FLAG_TIMER3_INT);
-//		digitCount++;
-//		if(digitCount == 4) digitCount = 0;
+		FlagSet(&flag, FLAG_TIMER3_INT);
+		digitCount++;
+		if(digitCount == 4) digitCount = 0;
 	}
 }
 
@@ -171,30 +198,47 @@ int DelayTim(uint8_t delay){
 
 void Read_Encoder(){
 	switch(ecdState){
-	case ECD_WAIT1:
-		if(DelayTim(50))
-		ecdState = ECD_State1;
-		break;
-	case ECD_WAIT2:
-		if(DelayTim(50))
-			ecdState = ECD_State2;
-		break;
-	case ECD_WAIT3:
-		if(DelayTim(50))
-			ecdState = ECD_State3;
-		break;
-	case ECD_State1:
-		State1();
-		break;
-	case ECD_State2:
-		State2();
-		break;
-	case ECD_State3:
-		State3();
-		break;
-	}
+	  	case ECD_WAIT1:
+	  		if(DelayTim(20))
+	  			ecdState = ECD_State1;
+	  		break;
+	  	case ECD_WAIT3:
+	  		if(DelayTim(10))
+	  			ecdState = ECD_State3;
+	  		break;
+	  	case ECD_State1:
+	  		EcdState1();
+	  		break;
+	  	case ECD_State2:
+	  		EcdState2();
+	  		break;
+	  	case ECD_State3:
+	  		EcdState3();
+	  		break;
+  	}
 }
 
+void Read_Button(){
+	switch(btnState){
+		case BTN_WAIT1:
+			if(DelayTim(20))
+				btnState = BTN_State1;
+			break;
+		case BTN_WAIT3:
+			if(DelayTim(10))
+				btnState = BTN_State3;
+			break;
+		case BTN_State1:
+			BtnState1();
+			break;
+		case BTN_State2:
+			BtnState2();
+			break;
+		case BTN_State3:
+			BtnState3();
+			break;
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -240,59 +284,39 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	  if(FlagCheck(flag, FLAG_TIMER3_INT)){
-//		  switch (digitCount) {
-//			case 0:
-//				SegLed_Show(LE7_BIT,digitNumber[0]);
-//			break;
-//			case 1:
-//				SegLed_Show(LE6_BIT,digitNumber[1]);
-//
-//			break;
-//			case 2:
-//				SegLed_Show(LE5_BIT,digitNumber[2]);
-//
-//			break;
-//			case 3:
-//				SegLed_Show(LE4_BIT,digitNumber[3]);
-//			break;
-//		}
-//		  digitNumber[0]++;
-//		  for(uint8_t i=0;i<sizeof(digitNumber)-1;i++){
-//			  if(digitNumber[i]==10){
-//				  digitNumber[i]=0;
-//				  digitNumber[i+1]++;
-//			  }
-//		  }
-//		  if(digitNumber[3]==10){
-//			  memset(digitNumber,0,sizeof(digitNumber));
-//		  }
-//		  FlagClear(&flag, FLAG_TIMER3_INT);
-//	  }
+	  if(FlagCheck(flag, FLAG_TIMER3_INT)){
+		  switch (digitCount) {
+			case 0:
+				SegLed_Show(LE7_BIT,digitNumber[0]);
+			break;
+			case 1:
+				SegLed_Show(LE6_BIT,digitNumber[1]);
 
-	  switch(ecdState){
-	  	case ECD_WAIT1:
-	  		if(DelayTim(50))
-	  		ecdState = ECD_State1;
-	  		break;
-	  	case ECD_WAIT2:
-	  		if(DelayTim(50))
-	  			ecdState = ECD_State2;
-	  		break;
-	  	case ECD_WAIT3:
-	  		if(DelayTim(50))
-	  			ecdState = ECD_State3;
-	  		break;
-	  	case ECD_State1:
-	  		State1();
-	  		break;
-	  	case ECD_State2:
-	  		State2();
-	  		break;
-	  	case ECD_State3:
-	  		State3();
-	  		break;
-	  	}
+			break;
+			case 2:
+				SegLed_Show(LE5_BIT,digitNumber[2]);
+
+			break;
+			case 3:
+				SegLed_Show(LE4_BIT,digitNumber[3]);
+			break;
+		}
+		  digitNumber[0]++;
+		  for(uint8_t i=0;i<sizeof(digitNumber)-1;i++){
+			  if(digitNumber[i]==10){
+				  digitNumber[i]=0;
+				  digitNumber[i+1]++;
+			  }
+		  }
+		  if(digitNumber[3]==10){
+			  memset(digitNumber,0,sizeof(digitNumber));
+		  }
+		  FlagClear(&flag, FLAG_TIMER3_INT);
+	  }
+
+	  Read_Encoder();
+	  Read_Button();
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -359,7 +383,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 64-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1000-1;
+  htim2.Init.Period = 10-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
