@@ -32,17 +32,22 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-typedef enum {
+typedef enum Flag{
 	FLAG_TIMER2_INT,
 	FLAG_TIMER3_INT,
 	FLAG_UART2_INT,
 }Flag;
 
-typedef enum {
-	Flag_Phase1,
-	Flag_Phase2,
-	Flag_Phase3,
-}Phase;
+typedef enum ecdProcState{
+	ECD_WAIT1 = 1,
+	ECD_WAIT2,
+	ECD_WAIT3,
+	ECD_State1,
+	ECD_State2,
+	ECD_State3,
+}ecdProcState;
+
+ecdProcState ecdState;
 
 /* USER CODE END PTD */
 
@@ -63,12 +68,14 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+uint8_t delay_counter = 0;
+
 uint8_t digitCount = 0;
 int8_t digitNumber[4] = {0};
 uint32_t flag = 0;
 
 int8_t count = 0;
-uint32_t EnFlag = 0;
+uint8_t check = 0;
 
 uint8_t Push = 0;
 
@@ -82,95 +89,113 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void FlagSet(uint32_t *f, Flag bitToSet){
-	*f |= (1<<bitToSet);
-}
+//void FlagSet(uint32_t *f, Flag bitToSet){
+//	*f |= (1<<bitToSet);
+//}
+//
+//void FlagClear(uint32_t *f, Flag bitToClear){
+//	*f &= ~(1<<bitToClear);
+//}
+//
+//uint8_t FlagCheck(uint32_t f, Flag bitToCheck){
+//	if(f&(1<<bitToCheck))
+//		return 1;
+//	else
+//		return 0;
+//}
 
-void FlagClear(uint32_t *f, Flag bitToClear){
-	*f &= ~(1<<bitToClear);
-}
-
-uint8_t FlagCheck(uint32_t f, Flag bitToCheck){
-	if(f&(1<<bitToCheck))
-		return 1;
-	else
-		return 0;
-}
-
-void ECDFlagSet(uint32_t *f, Phase bitToSet){
-	*f |= (1<<bitToSet);
-}
-
-void ECDFlagClear(uint32_t *f, Phase bitToClear){
-	*f &= ~(1<<bitToClear);
-}
-
-uint8_t ECDFlagCheck(uint32_t f, Phase bitToCheck){
-	if(f&(1<<bitToCheck))
-		return 1;
-	else
-		return 0;
-}
-
-void Phase1(){
-	if(ECDFlagCheck(EnFlag, Flag_Phase1)){
+void State1(){
+	if(HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)&HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
+		ecdState = ECD_State3;
+	else{
 		if(HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
 			count++;
 		else
 			count--;
+		ecdState = ECD_WAIT2;
 	}
-	ECDFlagClear(&EnFlag, Flag_Phase1);
-	ECDFlagSet(&EnFlag, Flag_Phase2);
 }
 
-void Phase2(){
-	if(ECDFlagCheck(EnFlag, Flag_Phase2)){
-		while(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){};
-	}
-	ECDFlagClear(&EnFlag, Flag_Phase2);
-	ECDFlagSet(&EnFlag, Flag_Phase3);
+void State2(){
+	while(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin)){};
+	ecdState = ECD_State3;
 }
 
-void Phase3(){
-	if(ECDFlagCheck(EnFlag, Flag_Phase3)){
-		for(int i = 0; i<4; i++){
-			if(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
-				i = 0;
-			__HAL_TIM_SET_COUNTER(&htim2,0);
-			while(__HAL_TIM_GET_COUNTER(&htim2)<500){};
-		}
-	}
-	ECDFlagClear(&EnFlag, Flag_Phase3);
+void State3(){
+	if(!HAL_GPIO_ReadPin(EnA_GPIO_Port, EnA_Pin))
+		check = 0;
+	else
+		check++;
+	if(check == 3)
+		ecdState = 0;
+	else
+		ecdState = ECD_WAIT3;
 	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == EnA_Pin){
-
-		ECDFlagSet(&EnFlag, Flag_Phase1);
+		ecdState = ECD_WAIT1;
 		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 	}
 	if(GPIO_Pin == EnBtn_Pin){
 		Push++;
 	}
-	char s[5]={0};
-	sprintf(s,"%d\n",count);
-	HAL_UART_Transmit(&huart3, (uint8_t*)s, strlen(s), HAL_MAX_DELAY);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if(htim->Instance == TIM2){
+		delay_counter++;
+	}
 	if(htim->Instance == TIM3){
-		FlagSet(&flag, FLAG_TIMER3_INT);
-		digitCount++;
-		if(digitCount == 4) digitCount = 0;
+//		FlagSet(&flag, FLAG_TIMER3_INT);
+//		digitCount++;
+//		if(digitCount == 4) digitCount = 0;
 	}
 }
+
+
+int DelayTim(uint8_t delay){
+	HAL_TIM_Base_Start_IT(&htim2);
+	if(delay_counter >= delay){
+		delay_counter = 0;
+		HAL_TIM_Base_Stop_IT(&htim2);
+		return 1;
+	}else return 0;
+}
+
+void Read_Encoder(){
+	switch(ecdState){
+	case ECD_WAIT1:
+		if(DelayTim(50))
+		ecdState = ECD_State1;
+		break;
+	case ECD_WAIT2:
+		if(DelayTim(50))
+			ecdState = ECD_State2;
+		break;
+	case ECD_WAIT3:
+		if(DelayTim(50))
+			ecdState = ECD_State3;
+		break;
+	case ECD_State1:
+		State1();
+		break;
+	case ECD_State2:
+		State2();
+		break;
+	case ECD_State3:
+		State3();
+		break;
+	}
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -207,57 +232,67 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start_IT(&htim3);
-  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
-  HAL_TIM_Base_Start(&htim2);
-//  HAL_TIM_Base_Start_IT(&htim2);
 
+  __HAL_DBGMCU_FREEZE_TIM2();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(FlagCheck(flag, FLAG_TIMER3_INT)){
-		  switch (digitCount) {
-			case 0:
-				SegLed_Show(LE7_BIT,digitNumber[0]);
-			break;
-			case 1:
-				SegLed_Show(LE6_BIT,digitNumber[1]);
+//	  if(FlagCheck(flag, FLAG_TIMER3_INT)){
+//		  switch (digitCount) {
+//			case 0:
+//				SegLed_Show(LE7_BIT,digitNumber[0]);
+//			break;
+//			case 1:
+//				SegLed_Show(LE6_BIT,digitNumber[1]);
+//
+//			break;
+//			case 2:
+//				SegLed_Show(LE5_BIT,digitNumber[2]);
+//
+//			break;
+//			case 3:
+//				SegLed_Show(LE4_BIT,digitNumber[3]);
+//			break;
+//		}
+//		  digitNumber[0]++;
+//		  for(uint8_t i=0;i<sizeof(digitNumber)-1;i++){
+//			  if(digitNumber[i]==10){
+//				  digitNumber[i]=0;
+//				  digitNumber[i+1]++;
+//			  }
+//		  }
+//		  if(digitNumber[3]==10){
+//			  memset(digitNumber,0,sizeof(digitNumber));
+//		  }
+//		  FlagClear(&flag, FLAG_TIMER3_INT);
+//	  }
 
-			break;
-			case 2:
-				SegLed_Show(LE5_BIT,digitNumber[2]);
-
-			break;
-			case 3:
-				SegLed_Show(LE4_BIT,digitNumber[3]);
-			break;
-		}
-		  digitNumber[0]++;
-		  for(uint8_t i=0;i<sizeof(digitNumber)-1;i++){
-			  if(digitNumber[i]==10){
-				  digitNumber[i]=0;
-				  digitNumber[i+1]++;
-			  }
-		  }
-		  if(digitNumber[3]==10){
-			  memset(digitNumber,0,sizeof(digitNumber));
-		  }
-		  FlagClear(&flag, FLAG_TIMER3_INT);
-	  }
-
-	  switch(EnFlag){
-	  		  case 1:
-	  			  Phase1();
-	  			  break;
-	  		  case 2:
-	  			  Phase2();
-	  			  break;
-	  		  case 4:
-	  			  Phase3();
-	  			  break;
-	  }
+	  switch(ecdState){
+	  	case ECD_WAIT1:
+	  		if(DelayTim(50))
+	  		ecdState = ECD_State1;
+	  		break;
+	  	case ECD_WAIT2:
+	  		if(DelayTim(50))
+	  			ecdState = ECD_State2;
+	  		break;
+	  	case ECD_WAIT3:
+	  		if(DelayTim(50))
+	  			ecdState = ECD_State3;
+	  		break;
+	  	case ECD_State1:
+	  		State1();
+	  		break;
+	  	case ECD_State2:
+	  		State2();
+	  		break;
+	  	case ECD_State3:
+	  		State3();
+	  		break;
+	  	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -280,7 +315,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -290,12 +327,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -320,9 +357,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 8-1;
+  htim2.Init.Prescaler = 64-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1-1;
+  htim2.Init.Period = 1000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
