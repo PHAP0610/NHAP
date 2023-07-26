@@ -75,6 +75,7 @@ void Error_Handler(void);
 #define HC595_SCLK_GPIO_Port GPIOA
 #define ACDET_Pin GPIO_PIN_0
 #define ACDET_GPIO_Port GPIOB
+#define ACDET_EXTI_IRQn EXTI0_IRQn
 #define TRIAC_Pin GPIO_PIN_1
 #define TRIAC_GPIO_Port GPIOB
 #define SD_CS_Pin GPIO_PIN_14

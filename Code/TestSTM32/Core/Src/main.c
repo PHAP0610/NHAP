@@ -68,6 +68,10 @@ typedef enum _DelayProcess {
 	BTN_Count_Delay,
 	ECD_Count_Delay,
 	BUZZER_Count_Delay,
+	LED_Count_Done,
+	BTN_Count_Done,
+	ECD_Count_Done,
+	BUZZER_Count_Done
 } _DelayProcess;
 
 typedef struct _DS3231{
@@ -183,53 +187,57 @@ void Delay_Tim(uint32_t delay, _DelayProcess _delayProc) {
 		delay_counter[1][3] = delay;
 		if(delay_counter[0][3 < delay])
 			delayProcess = BUZZER_Count_Delay;
-		else
-			switch(buzzerState)
-			{
-			case Buzzer_On:
-				buzzerState = Buzzer_Off;
-				break;
-			default:
-				buzzerState = Buzzer_On;
-				break;
-			}
 		break;
 	case LED_Count_Delay:
 		delay_counter[1][2] = delay;
 		if (delay_counter[0][2] < delay)
 			delayProcess = LED_Count_Delay;
-		else
-			ledstate = LED_Start;
 		break;
 	case BTN_Count_Delay:
 		delay_counter[1][1] = delay;
 		if (delay_counter[0][1] < delay)
 			delayProcess = BTN_Count_Delay;
-		else
-			switch (btnState)
-			{
-			case BTN_WAIT1:
-				btnState = BTN_State1;
-				break;
-			default:
-				btnState = BTN_State3;
-				break;
-			}
 		break;
 	case ECD_Count_Delay:
 		delay_counter[1][0] = delay;
 		if (delay_counter[0][0] < delay)
 			delayProcess = ECD_Count_Delay;
-		else
-			switch (ecdState)
-			{
-			case ECD_WAIT1:
-				ecdState = ECD_State1;
-				break;
-			default:
-				ecdState = ECD_State3;
-				break;
-			}
+		break;
+	case LED_Count_Done:
+		ledstate = LED_Start;
+		break;
+	case BTN_Count_Done:
+		switch (btnState)
+		{
+		case BTN_WAIT1:
+			btnState = BTN_State1;
+			break;
+		default:
+			btnState = BTN_State3;
+			break;
+		}
+		break;
+	case ECD_Count_Done:
+		switch (ecdState)
+		{
+		case ECD_WAIT1:
+			ecdState = ECD_State1;
+			break;
+		default:
+			ecdState = ECD_State3;
+			break;
+		}
+		break;
+	case BUZZER_Count_Done:
+		switch(buzzerState)
+		{
+		case Buzzer_On:
+			buzzerState = Buzzer_Off;
+			break;
+		default:
+			buzzerState = Buzzer_On;
+			break;
+		}
 		break;
 	}
 }
@@ -238,24 +246,48 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM2) {
 		switch (delayProcess) {
 		case BUZZER_Count_Delay:
-			if (delay_counter[0][3]++ >= delay_counter[1][3])
-				delay_counter[0][3] = 0;
+			if (delay_counter[0][3] < delay_counter[1][3])
+				delay_counter[0][3]++;
+			else{
+				delay_counter[0][3]=0;
+				delayProcess = BUZZER_Count_Done;
+			}
 			delayProcess = 0;
 			break;
 		case LED_Count_Delay:
-			if (delay_counter[0][2]++ >= delay_counter[1][2])
-				delay_counter[0][2] = 0;
+			if (delay_counter[0][2] < delay_counter[1][2])
+				delay_counter[0][2]++;
+			else{
+				delay_counter[0][2]=0;
+				delayProcess = LED_Count_Done;
+			}
 			delayProcess = 0;
 			break;
 		case BTN_Count_Delay:
-			if (delay_counter[0][1]++ >= delay_counter[1][1]) 
-				delay_counter[0][1] = 0;
+			if (delay_counter[0][1] < delay_counter[1][1])
+				delay_counter[0][1]++;
+			else{
+				delay_counter[0][1]=0;
+				delayProcess = BTN_Count_Done;
+			}
 			delayProcess = 0;
 			break;
 		case ECD_Count_Delay:
-			if (delay_counter[0][0]++ >= delay_counter[1][0])
-				delay_counter[0][0] = 0;
+			if (delay_counter[0][0] < delay_counter[1][0])
+				delay_counter[0][0]++;
+			else{
+				delay_counter[0][0]=0;
+				delayProcess = ECD_Count_Done;
+			}
 			delayProcess = 0;
+			break;
+		case LED_Count_Done:
+			break;
+		case BUZZER_Count_Done:
+			break;
+		case ECD_Count_Done:
+			break;
+		case BTN_Count_Done:
 			break;
 		}
 	}
@@ -324,10 +356,10 @@ void DS3231_SetTime(uint8_t sec, uint8_t min, uint8_t hour, uint8_t day, uint8_t
 void Read_Encoder() {
 	switch (ecdState) {
 	case ECD_WAIT1:
-		Delay_Tim(20, ECD_Count_Delay);
+		Delay_Tim(2, ECD_Count_Delay);
 		break;
 	case ECD_WAIT3:
-		Delay_Tim(20, ECD_Count_Delay);
+		Delay_Tim(2, ECD_Count_Delay);
 		break;
 	case ECD_State1:
 		if (HAL_GPIO_ReadPin(EnB_GPIO_Port, EnB_Pin))
@@ -357,13 +389,13 @@ void Read_Encoder() {
 void Read_Button() {
 	switch (btnState) {
 	case BTN_WAIT1:
-		Delay_Tim(20, BTN_Count_Delay);
+		Delay_Tim(2, BTN_Count_Delay);
 		break;
 	case BTN_WAIT3:
-		Delay_Tim(20,BTN_Count_Delay);
+		Delay_Tim(2,BTN_Count_Delay);
 		break;
 	case BTN_State1:
-		push = !push;
+		push ^= 1;
 		btnState = BTN_State2;
 		break;
 	case BTN_State2:
@@ -375,7 +407,7 @@ void Read_Button() {
 			btncheck = 0;
 		else
 			btncheck++;
-		if (ecdcheck == 3){
+		if (btncheck >= 3){
 			HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 			btnState = 0;
 		}
@@ -418,7 +450,7 @@ void UpperLed() {
 }
 
 void LowerLed() {
-	lowerNumber[0] = ecdcount;
+	lowerNumber[0]++;
 	for (uint8_t i = 0; i < sizeof(lowerNumber) - 1; i++) {
 		if (lowerNumber[i] == 10) {
 			lowerNumber[i] = 0;
@@ -483,7 +515,7 @@ int main(void)
 
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
-  DS3231_SetTime(0, 14, 20, 3, 25, 7, 23);
+//  DS3231_SetTime(0, 14, 20, 3, 25, 7, 23);
 
   /* USER CODE END 2 */
 
@@ -493,8 +525,8 @@ int main(void)
 		Read_Encoder();
 		Read_Button();
 		UpperLed();
-//	  LowerLed();
-		Buzzer();
+	    LowerLed();
+//		Buzzer();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -514,13 +546,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -632,9 +663,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 72-1;
+  htim2.Init.Prescaler = 64-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10-1;
+  htim2.Init.Period = 100-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -677,9 +708,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 72-1;
+  htim3.Init.Prescaler = 64-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 10;
+  htim3.Init.Period = 1000-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -749,7 +780,6 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
@@ -800,17 +830,23 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : EnA_Pin EnBtn_Pin */
-  GPIO_InitStruct.Pin = EnA_Pin|EnBtn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  /*Configure GPIO pin : EnA_Pin */
+  GPIO_InitStruct.Pin = EnA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(EnA_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : EnB_Pin */
   GPIO_InitStruct.Pin = EnB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(EnB_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : EnBtn_Pin */
+  GPIO_InitStruct.Pin = EnBtn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(EnBtn_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LORA_CS_Pin */
   GPIO_InitStruct.Pin = LORA_CS_Pin;
@@ -820,6 +856,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(LORA_CS_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
