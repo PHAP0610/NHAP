@@ -8,10 +8,9 @@
   )
 
   (bus_alias "pSD" (members "DET" "CS"))
-  (bus_alias "EnC" (members "EnC_A" "EnC_B" "EnC_BT"))
   (bus_alias "74595" (members "OE" "SER" "SRCLK" "RCLK"))
+  (bus_alias "EnC" (members "EnC_A" "EnC_B" "EnC_BT"))
   (bus_alias "USB" (members "D+" "D-"))
-
   (junction (at 192.405 55.245) (diameter 0) (color 0 0 0 0)
     (uuid 2bb10b4c-06fe-48c8-90ea-913920686455)
   )

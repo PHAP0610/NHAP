@@ -3182,7 +3182,7 @@
     (property "Value" "Crystal_GND24_Small" (at 200.025 79.375 90)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (property "Footprint" "IVS_FOOTPRINTS:Crystal_3225_4P_3.2x2.6mm" (at 196.85 79.375 0)
+    (property "Footprint" "IVS_FOOTPRINTS:Crystal-SMD-4P-3.2x2.6mm-3225" (at 196.85 79.375 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "https://docs.rs-online.com/ec34/0900766b816028ea.pdf" (at 196.85 79.375 0)
