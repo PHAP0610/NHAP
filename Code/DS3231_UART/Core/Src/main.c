@@ -30,15 +30,6 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-typedef enum SET_TIME{
-	MIN,
-	HOUR,
-	DAY,
-	DATE,
-	MONTH,
-	YEAR,
-}SET_TIME;
-
 typedef struct{
 	uint8_t sec;
 	uint8_t min;
@@ -50,7 +41,6 @@ typedef struct{
 }_DS3231;
 
 _DS3231 ds3231;
-SET_TIME settime;
 
 /* USER CODE END PTD */
 
@@ -82,8 +72,10 @@ UART_HandleTypeDef huart3;
 
 uint8_t flag = 0;
 
-uint8_t sRx[1] = {0};
-uint8_t logRxData[50] = {0};
+uint8_t sec = 0, min = 0, hour = 0, day = 0, date = 0, month = 0, year = 0;
+
+char sRx[1];
+char logRxData[100] = {0};
 char sTx[100] = {0};
 
 /* USER CODE END PV */
@@ -110,34 +102,34 @@ uint8_t D2B(uint8_t num){
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3){
-	  HAL_UART_Receive_IT(&huart3, sRx, 1);
+	  HAL_UART_Receive_IT(&huart3, (uint8_t*)sRx, 1);
 	  if(!strcmp((char*)sRx,"\n")){
 		  SETFLAG(FLAG_COMPLETE_UART,flag);
 		  sRx[0] = 0;
 	  }else
-		  strcat((char *)logRxData,(char*)sRx);
+		  strcat((char *)logRxData,(char *)sRx);
   }
 }
 
-void DS3231_SetTime(){
-	uint8_t rtcData[8];
+void DS3231_SetTime(uint8_t sec, uint8_t min, uint8_t hour, uint8_t day, uint8_t date, uint8_t month, uint8_t year){
+	uint8_t rtcData[8] = {0};
 
 	rtcData[0] = 0x00;
-	rtcData[1] = D2B(0);
-	rtcData[2] = D2B(ds3231.min);
-	rtcData[3] = D2B(ds3231.hour);
-	rtcData[4] = D2B(ds3231.day);
-	rtcData[5] = D2B(ds3231.date);
-	rtcData[6] = D2B(ds3231.month);
-	rtcData[7] = D2B(ds3231.year);
+	rtcData[1] = D2B(sec);
+	rtcData[2] = D2B(min);
+	rtcData[3] = D2B(hour);
+	rtcData[4] = D2B(day);
+	rtcData[5] = D2B(date);
+	rtcData[6] = D2B(month);
+	rtcData[7] = D2B(year);
 
-	HAL_I2C_Master_Transmit(&hi2c1, DS3231_ADDRESS, rtcData, strlen((char *)rtcData), HAL_MAX_DELAY);
+	HAL_I2C_Master_Transmit(&hi2c1, DS3231_ADDRESS, rtcData, 8, HAL_MAX_DELAY);
 }
 
 void DS3231_GetTime(){
 	uint8_t rtcData[7];
 	HAL_I2C_Master_Transmit(&hi2c1, DS3231_ADDRESS, 0x00, 1, HAL_MAX_DELAY);
-	HAL_I2C_Master_Receive(&hi2c1, DS3231_ADDRESS, rtcData, strlen((char *)rtcData), HAL_MAX_DELAY);
+	HAL_I2C_Master_Receive(&hi2c1, DS3231_ADDRESS, rtcData, 7, HAL_MAX_DELAY);
 
 	ds3231.sec   = B2D(rtcData[0]);
 	ds3231.min   = B2D(rtcData[1]);
@@ -148,109 +140,43 @@ void DS3231_GetTime(){
 	ds3231.year  = B2D(rtcData[6]);
 }
 
-void UartSetTime(){
-	uint8_t step = 0;
-	if(CHECKFLAG(FLAG_SET_TIME,flag)){
-		switch(settime){
-		case MIN:
-			if(!step){
-				strcpy(sTx,"Min: ");
-				HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
-				memset(sTx,0,strlen(sTx));
-				step++;
-			}else{
-				ds3231.min = logRxData;
-				step = 0;
-				memset(logRxData,0,strlen((char *)logRxData));
-				settime = HOUR;
-			}
-			break;
-		case HOUR:
-			if(!step){
-				strcpy(sTx,"Hour: ");
-				HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
-				memset(sTx,0,strlen(sTx));
-				step++;
-			}else{
-				ds3231.hour = logRxData;
-				step = 0;
-				memset(logRxData,0,strlen((char *)logRxData));
-				settime = DAY;
-			}
-			break;
-		case DAY:
-			if(!step){
-				strcpy(sTx,"Day: ");
-				HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
-				memset(sTx,0,strlen(sTx));
-				step++;
-			}else{
-				ds3231.day = logRxData;
-				step = 0;
-				memset(logRxData,0,strlen((char *)logRxData));
-				settime = DATE;
-			}
-			break;
-		case DATE:
-			if(!step){
-				strcpy(sTx,"Date: ");
-				HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
-				memset(sTx,0,strlen(sTx));
-				step++;
-			}else{
-				ds3231.date = logRxData;
-				step = 0;
-				memset(logRxData,0,strlen((char *)logRxData));
-				settime = MONTH;
-			}
-			break;
-		case MONTH:
-			if(!step){
-				strcpy(sTx,"Month: ");
-				HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
-				memset(sTx,0,strlen(sTx));
-				step++;
-			}else{
-				ds3231.month = logRxData;
-				step = 0;
-				memset(logRxData,0,strlen((char *)logRxData));
-				settime = YEAR;
-			}
-			break;
-		case YEAR:
-			if(!step){
-				strcpy(sTx,"Year: ");
-				HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
-				memset(sTx,0,strlen(sTx));
-				step++;
-			}else{
-				ds3231.year = logRxData;
-				step = 0;
-				memset(logRxData,0,strlen((char *)logRxData));
-				settime = MIN;
-			}
-			CLEARFLAG(FLAG_SET_TIME,flag);
-			DS3231_SetTime();
-			break;
-		}
-	}
-}
-
-void UartGetTime(){
-	if(CHECKFLAG(FLAG_GET_TIME,flag)){
-		DS3231_GetTime();
-		sprintf(sTx,"%u:%u:%u %u/%u/20%u\n",ds3231.hour,ds3231.min,ds3231.sec,ds3231.date,ds3231.month,ds3231.year);
-		HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
-	}
-}
-
 void XuLyDuLieuTuUart(){
-	if(!strcmp((char *)logRxData,"SetTime\n")){
-		SETFLAG(FLAG_SET_TIME,flag);
+	char dayofweek[10] = {0};
+
+	if(strstr(logRxData, "SetTime")){
+		sscanf(logRxData, "SetTime %hhu:%hhu:%hhu %hhu %hhu/%hhu/%hhu", &hour, &min, &sec, &day, &date, &month, &year);
+
+		DS3231_SetTime(sec, min, hour, day, date, month, year);
 		memset(logRxData,0,strlen(logRxData));
 	}
-	if(!strcmp((char *)logRxData,"GetTime\n")){
-		SETFLAG(FLAG_GET_TIME,flag);
+	if(strstr(logRxData, "GetTime")){
+		DS3231_GetTime();
+		switch(ds3231.day){
+		case 1:
+			strcpy(dayofweek, "Sun");
+			break;
+		case 2:
+			strcpy(dayofweek, "Mon");
+			break;
+		case 3:
+			strcpy(dayofweek, "Tue");
+			break;
+		case 4:
+			strcpy(dayofweek, "Wed");
+			break;
+		case 5:
+			strcpy(dayofweek, "Thu");
+			break;
+		case 6:
+			strcpy(dayofweek, "Fri");
+			break;
+		case 7:
+			strcpy(dayofweek, "Sat");
+			break;
+		}
+		sprintf(sTx,"%u:%u:%u %s %u/%u/20%u\n",ds3231.hour, ds3231.min, ds3231.sec, dayofweek, ds3231.date, ds3231.month, ds3231.year);
+		HAL_UART_Transmit(&huart3, (uint8_t *)sTx, strlen(sTx), HAL_MAX_DELAY);
+		memset(sTx,0,strlen(sTx));
 		memset(logRxData,0,strlen(logRxData));
 	}
 }
@@ -288,7 +214,7 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_IT(&huart3, sRx, 1);
+  HAL_UART_Receive_IT(&huart3, (uint8_t*)sRx, 1);
 
   /* USER CODE END 2 */
 
@@ -297,8 +223,8 @@ int main(void)
   while (1)
   {
 	  if(CHECKFLAG(FLAG_COMPLETE_UART,flag)){
+
 		  XuLyDuLieuTuUart();
-		  UartSetTime();
 		  CLEARFLAG(FLAG_COMPLETE_UART,flag);
 	  }
     /* USER CODE END WHILE */

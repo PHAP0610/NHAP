@@ -33,6 +33,12 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define FLAGSET(FLAG,flag)  (flag |= (FLAG))
+#define FLAGCLEAR(FLAG,flag)(flag &= ~(FLAG))
+#define FLAGCHECK(FLAG,flag)(flag & FLAG ? 1 : 0)
+
+#define FLAG_COMPLETE_UART  (1<<0)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,7 +50,9 @@
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+
 uint8_t flag = 0;
+
 uint8_t rxTemp[1] = {0};
 uint8_t sRx[50] = {0};
 uint8_t sTx[50] = {0};
@@ -65,7 +73,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	if(huart -> Instance == USART3){
 		HAL_UART_Receive_IT(huart, rxTemp, 1);
 		if(!strcmp((char *)rxTemp,"\n")){
-			flag = 1;
+			FLAGSET(FLAG_COMPLETE_UART,flag);
 			rxTemp[0] = 0;
 		}else
 			strcpy((char *)sRx, (char *)rxTemp);
@@ -103,14 +111,17 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart3, rxTemp, strlen((char *)rxTemp));
+
+  HAL_UART_Receive_IT(&huart3, rxTemp, 1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(flag){
+	  if(FLAGCHECK(FLAG_COMPLETE_UART,flag)){
+		  FLAGCLEAR(FLAG_COMPLETE_UART,flag);
 		  HAL_UART_Transmit(&huart3, (uint8_t*)"OK\n", strlen("OK\n"), HAL_MAX_DELAY);
 	  }
     /* USER CODE END WHILE */
@@ -196,12 +207,22 @@ static void MX_USART3_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin : PB8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure peripheral I/O remapping */
+  __HAL_AFIO_REMAP_I2C1_ENABLE();
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
