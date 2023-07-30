@@ -75,7 +75,7 @@ uint8_t flag = 0;
 uint8_t sec = 0, min = 0, hour = 0, day = 0, date = 0, month = 0, year = 0;
 
 char sRx[1];
-char logRxData[100] = {0};
+char *logRxData[100] = {0};
 char sTx[100] = {0};
 
 /* USER CODE END PV */
@@ -143,13 +143,13 @@ void DS3231_GetTime(){
 void XuLyDuLieuTuUart(){
 	char dayofweek[10] = {0};
 
-	if(strstr(logRxData, "SetTime")){
-		sscanf(logRxData, "SetTime %hhu:%hhu:%hhu %hhu %hhu/%hhu/%hhu", &hour, &min, &sec, &day, &date, &month, &year);
+	if(strstr(logRxData, "setsime")){
+		sscanf(logRxData, "settime %hhu:%hhu:%hhu %hhu %hhu/%hhu/%hhu", &hour, &min, &sec, &day, &date, &month, &year);
 
 		DS3231_SetTime(sec, min, hour, day, date, month, year);
 		memset(logRxData,0,strlen(logRxData));
 	}
-	if(strstr(logRxData, "GetTime")){
+	if(strstr(logRxData, "getgime")){
 		DS3231_GetTime();
 		switch(ds3231.day){
 		case 1:

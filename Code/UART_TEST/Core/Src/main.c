@@ -57,6 +57,8 @@ uint8_t rxTemp[1] = {0};
 uint8_t sRx[50] = {0};
 uint8_t sTx[50] = {0};
 
+char* s = "OK\n";
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,10 +122,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(FLAGCHECK(FLAG_COMPLETE_UART,flag)){
-		  FLAGCLEAR(FLAG_COMPLETE_UART,flag);
-		  HAL_UART_Transmit(&huart3, (uint8_t*)"OK\n", strlen("OK\n"), HAL_MAX_DELAY);
-	  }
+
+	HAL_UART_Transmit(&huart3, (uint8_t*)("OK\n"), strlen("OK\n"), HAL_MAX_DELAY);
+	HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
